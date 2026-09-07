@@ -1,0 +1,37 @@
+{
+  "grupos": {
+    "1": "Resultado Final (1X2)",
+    "2": "Handicap",
+    "7": "Vencedor do Jogo",
+    "8": "Dupla Hipótese",
+    "15": "Total da Equipe",
+    "17": "Total de Gols / Pontos (Mais / Menos)",
+    "19": "Ambas as Equipes Marcam",
+    "62": "Total Asiático",
+    "99": "Total Alternativo",
+    "101": "Vencedor da Partida (Incluindo Prorrogação)",
+    "2766": "Handicap da Partida",
+    "2854": "Handicap Alternativo",
+    "11212": "Placar Exato",
+    "11412": "Intervalo / Final do Jogo"
+  },
+  "tipos": {
+    "1": "Casa",
+    "2": "Empate",
+    "3": "Fora",
+    "4": "Casa ou Empate",
+    "5": "Casa ou Fora",
+    "6": "Fora ou Empate",
+    "7": "Competidor 1",
+    "8": "Competidor 2",
+    "9": "Mais",
+    "10": "Menos",
+    "401": "Casa",
+    "402": "Fora",
+    "3653": "Casa",
+    "3654": "Empate / Linha",
+    "3655": "Fora",
+    "180": "Sim",
+    "181": "Não"
+  }
+}

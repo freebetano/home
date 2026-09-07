@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Título otimizado com foco na proposta de valor -->
+    <title>FreeBetano | Saldo Fictício e Odds Reais para Suas Apostas</title>
+    
+    <!-- Descrição rica em tags destacando o saldo fictício e odds reais -->
+    <meta name="description" content="Divirta-se sem riscos na FreeBetano! Teste suas estratégias com saldo fictício e aposte em tempo real utilizando odds reais do mercado esportivo e ao vivo.">
+    <meta name="keywords" content="freebetano, saldo ficticio, odds reais, apostas esportivas, palpites de futebol, odds ao vivo, boletim de apostas">
+    <meta name="author" content="FreeBetano">
+    <link rel="canonical" href="https://freebetano.com">
+
+    <!-- Open Graph / Redes Sociais e WhatsApp -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://freebetano.com">
+    <meta property="og:title" content="FreeBetano | Saldo Fictício e Odds Reais para Suas Apostas">
+    <meta property="og:description" content="Divirta-se sem riscos com saldo fictício utilizando odds reais do mercado esportivo.">
+    <meta property="og:image" content="favicon.png">
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://freebetano.com">
+    <meta name="twitter:title" content="FreeBetano | Saldo Fictício e Odds Reais">
+    <meta name="twitter:description" content="Aposte com saldo fictício e acompanhe odds reais em tempo real.">
+    <meta name="twitter:image" content="favicon.png">
+
+    <!-- Ícones e Favicon (apontando para icone.png na mesma pasta) -->
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="apple-touch-icon" href="favicon.png">
+    <link rel="shortcut icon" href="favicon.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+</head>
+<body>
+
+    <!-- Header / Topo -->
+    <header>
+        <!-- Botão Menu Hambúrguer (Menor e na Esquerda) -->
+        <button class="hamburger-btn" onclick="toggleMenuMobile()" title="Menu">
+            ☰
+        </button>
+
+        <!-- Logo Centralizada e Nome Dividido por Cores -->
+        <div class="logo-area" onclick="voltarParaLista()">
+            <img src="logo.png" alt="Logo FreeBetano" class="logo-img">
+            <h1><span class="logo-free">Free</span><span class="logo-betano">Betano</span></h1>
+        </div>
+
+        <!-- Menu do Usuário / Perfil (Na Direita) -->
+        <div class="user-menu">
+            <div class="profile-container" id="profileContainer">
+                <div class="profile-icon" onclick="toggleMenuPerfil(event)" title="Perfil">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </div>
+                <div class="dropdown-menu" id="profileDropdown" style="min-width: 210px; white-space: nowrap;">
+                    <div style="padding: 10px 15px; border-bottom: 1px solid var(--border-color, #2d3748);">
+                        <div id="userBalance" style="font-size: 0.95rem; font-weight: bold; color: var(--accent-color, #10b981);">Saldo: R$ 10.000,00</div>
+                    </div>
+                    <button onclick="abrirHistorico()">Minhas Apostas</button>
+                    <button onclick="deslogar()">Deslogar</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Layout Principal de 3 Colunas -->
+    <div class="main-layout" id="mainLayout">
+        
+        <!-- Coluna Esquerda: Lista de Esportes -->
+        <aside class="sidebar-left">
+            <div class="sidebar-header">
+                <h3>Esportes</h3>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <button class="btn-sort" id="btnSort" onclick="alternarOrdenacao()">🔤 A-Z</button>
+                    <button class="close-betslip close-sidebar-mobile" onclick="fecharMenuMobile()" title="Fechar menu">✕</button>
+                </div>
+            </div>
+            <div class="sport-select-list" id="sportListContainer">
+                <div class="loading" style="padding: 1rem; font-size: 0.85rem;">Carregando esportes...</div>
+            </div>
+        </aside>
+
+        <!-- Coluna Central: Jogos e Mercados -->
+        <main class="content-center" id="contentCenterArea">
+            <div class="loading">Selecione um esporte ao lado para carregar os confrontos...</div>
+        </main>
+
+        <!-- Coluna Direita: Boletim de Apostas (Bet Slip) Limpo -->
+        <aside class="sidebar-right" id="sidebarRight">
+            <div id="betslipContainer"></div>
+        </aside>
+
+    </div>
+
+    <!-- Modal do Histórico de Apostas Organizado com Abas -->
+    <div class="modal" id="historyModal" style="display: none;">
+        <div class="modal-content" style="width: 90%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <h3>Minhas Apostas</h3>
+                <button class="close-modal" onclick="fecharHistorico()">✕</button>
+            </div>
+            
+            <!-- Abas de Navegação (Pendentes vs Resolvidas) -->
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                <button onclick="mudarAbaHistorico('pendentes')" id="tabPendentes" style="background: var(--brand-orange); color: #fff; border: none; padding: 0.4rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Pendentes</button>
+                <button onclick="mudarAbaHistorico('resolvidas')" id="tabResolvidas" style="background: transparent; color: var(--text-muted); border: 1px solid var(--border-color); padding: 0.4rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Resolvidas</button>
+            </div>
+
+            <!-- Container da Lista de Apostas -->
+            <div id="historyList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding-right: 2px;">
+                <div class="empty-msg">Nenhuma aposta encontrada.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Estatísticas com Iframe -->
+    <div class="modal" id="statsModal" style="display: none;">
+        <div class="modal-content" style="width: 90%; max-width: 900px; height: 80vh; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+            <div class="modal-header" style="padding: 1rem 1.5rem; margin: 0;">
+                <h3 style="color: var(--brand-orange, #f75c2e); font-size: 1rem;">Estatísticas da Partida</h3>
+                <button class="close-modal" onclick="fecharModalStats()">✕</button>
+            </div>
+            <div style="flex: 1; width: 100%; background: #0f172a;">
+                <iframe id="statsIframe" src="" style="width: 100%; height: 100%; border: none;"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- Links para os arquivos JavaScript externos na ordem correta -->
+    <script src="script.js"></script>
+    <script src="line.js"></script>
+    <script src="live.js"></script>
+    <script src="stats.js"></script>
+    <script src="history_bet.js"></script>
+    <script src="perfil.js"></script>
+</body>
+</html>
