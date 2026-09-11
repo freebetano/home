@@ -12,7 +12,7 @@
     "101": "Vencedor da Partida (Incluindo Prorrogação)",
     "2766": "Handicap da Partida",
     "2854": "Handicap Alternativo",
-    "11212": "Placar Exato",
+    "11212": "Resultado Final + Ambas Marcam",
     "11412": "Intervalo / Final do Jogo"
   },
   "tipos": {
@@ -32,6 +32,14 @@
     "3654": "Empate / Linha",
     "3655": "Fora",
     "180": "Sim",
-    "181": "Não"
+    "181": "Não",
+    "11273":" Cada Equipe Marca - Sim",
+    "11274":" Cada Equipe Marca  - Não",
+    "15770": "Casa e Ambas Marcam- Sim",
+    "15771": "Fora e Ambas Marcam -Sim",
+    "15772": "Empate e Ambas Marcam - Sim",
+    "15773": "Casa e Ambas Marcam - Não",
+    "15774": "Fora e Ambas Marcam - Não",
+    "15775": "Empate e Ambas Marcam - Não"
   }
 }
