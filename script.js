@@ -1,5 +1,5 @@
 // ==========================================
-// NÚCLEO DA APLICAÇÃO (SCRIPT.JS COM FEEDBACK NO BOLETIM)
+// NÚCLEO DA APLICAÇÃO (SCRIPT.JS - 100% JSON)
 // ==========================================
 let saldo = 10000.00;
 let selecoesApostas = []; 
@@ -9,33 +9,57 @@ let esporteAtualSelecionado = null;
 let modoExibicaoAtual = 'live'; 
 let boletimMinimizado = false; 
 
+// Inicializados vazios para receberem os dados dos arquivos .json
 let esportesLista = [];
-let opcoesMapa = {};
+let opcoesMapa = { grupos: {}, tipos: {} };
 let ordenacaoAlfabetica = false; 
 
-const esportesFallback = [
-    { "id": "1.1,2.1,10.1", "nome": "⚽ Futebol" },
-    { "id": "1.3,2.3,10.2", "nome": "🏀 Basquete" },
-    { "id": "1.4,2.4,10.3", "nome": "🎾 Tênis" },
-    { "id": "1.6,2.6,10.4", "nome": "🏐 Vôlei" },
-    { "id": "1.5,2.5,10.5", "nome": "⚾ Beisebol" },
-    { "id": "1.2,2.2,10.6", "nome": "🏒 Hóquei no Gelo" },
-    { "id": "1.13,2.13,10.7", "nome": "🏈 Futebol Americano" }
-];
-
-const opcoesFallback = {
-    "grupos": {
-        "1": "Resultado Final",
-        "7": "Vencedor do Jogo",
-        "101": "Moneyline",
-        "8": "Dupla Hipótese",
-        "17": "Total de Gols/Pontos",
-        "19": "Ambas as Equipes Marcam"
-    },
-    "tipos": {
-        "1": "Casa", "2": "Empate", "3": "Fora", "7": "Competidor 1", "8": "Competidor 2", "9": "Mais", "10": "Menos", "180": "Sim", "181": "Não"
+// Carrega as opções e mercados direto do opcoes.json
+async function carregarOpcoesJson() {
+    try {
+        const res = await fetch('./opcoes.json');
+        if (!res.ok) throw new Error("Arquivo opcoes.json não encontrado");
+        const jsonBaixado = await res.json();
+        opcoesMapa = {
+            grupos: jsonBaixado.grupos || {},
+            tipos: jsonBaixado.tipos || {}
+        };
+    } catch (e) {
+        console.error("Erro ao carregar opcoes.json:", e);
+        opcoesMapa = { grupos: {}, tipos: {} };
     }
-};
+}
+
+// Carrega a lista de esportes direto do esportes.json
+async function carregarEsportesJson() {
+    try {
+        const res = await fetch('./esportes.json');
+        if (!res.ok) throw new Error("Arquivo esportes.json não encontrado");
+        esportesLista = await res.json();
+    } catch (e) {
+        console.error("Erro ao carregar esportes.json:", e);
+        esportesLista = [];
+    }
+}
+
+// Inicialização segura: garante que os dois JSONs carreguem antes de renderizar
+async function inicializarApp() {
+    await Promise.all([
+        carregarOpcoesJson(),
+        carregarEsportesJson()
+    ]);
+
+    // Chama a renderização dos esportes e jogos agora que os dados já estão na memória
+    if (typeof renderizarBotoesEsportes === 'function') {
+        renderizarBotoesEsportes();
+    }
+    if (typeof carregarJogos === 'function') {
+        carregarJogos();
+    }
+}
+
+// Dispara o carregamento assim que o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', inicializarApp);
 
 // ==========================================
 // CONTROLE DE MENU DO PERFIL (HEADER)
@@ -221,8 +245,9 @@ function filtrarJogosNaTela() {
     });
 }
 
+
 // ==========================================
-// DETALHES DE CONFRONTO E MERCADOS
+// DETALHES DE CONFRONTO E CARREGAMENTO DO MÓDULO EXTERNO
 // ==========================================
 function abrirDetalhesConfronto(jogoId) {
     const jogo = cacheJogosAtuais.find(j => String(j.id) === String(jogoId));
@@ -290,76 +315,57 @@ function abrirDetalhesConfronto(jogoId) {
                 <h2 style="font-size: 1.2rem; color: var(--brand-orange); font-weight: 700; text-align: center; margin: 0;">${nomeConfronto}</h2>
                 ${infoCabecalhoHtml}
             </div>
+
+            <div id="containerOutrosMercados">
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 1rem; background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; gap: 1rem;">
+                    <div style="width: 40px; height: 40px; border: 4px solid var(--border-color); border-top: 4px solid var(--brand-orange); border-radius: 50%; animation: spin 1.0s linear infinite;"></div>
+                    <span style="color: var(--text-muted); font-size: 0.85rem;">Carregando mercados da API...</span>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
     `;
 
-    if (jogo.eventGroups && jogo.eventGroups.length > 0) {
-        jogo.eventGroups.forEach((grupo, gIndex) => {
-            const gId = String(grupo.groupId);
-            const gruposMapa = opcoesMapa.grupos || {};
-            const tituloGrupo = gruposMapa[gId] ? gruposMapa[gId] : `Mercado (${gId})`;
-
-            let totalOpcoes = 0;
-            if (grupo.events) {
-                grupo.events.forEach(subLista => {
-                    totalOpcoes += subLista.length;
-                });
-            }
-
-            const classeGrid = totalOpcoes === 3 ? 'market-options-grid cols-3' : 'market-options-grid';
-
-            html += `
-                <div class="market-block" style="background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-                    <div class="market-group-title" style="font-size: 0.95rem; font-weight: bold; color: var(--brand-orange); margin-bottom: 0.75rem; text-align: center; text-transform: uppercase;">${tituloGrupo}</div>
-                    <div class="${classeGrid}" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.5rem;">
-            `;
-
-            if (grupo.events) {
-                grupo.events.forEach((subLista, sIndex) => {
-                    subLista.forEach((ev, eIndex) => {
-                        const tId = String(ev.type);
-                        const tiposMapa = opcoesMapa.tipos || {};
-                        let nomeTipo = tiposMapa[tId] ? tiposMapa[tId] : null;
-
-                        if (tId === "1") nomeTipo = op1;
-                        if (tId === "3" || tId === "2") nomeTipo = (gId === "1" && tId === "2") ? "Empate (X)" : op2;
-                        if (tId === "7") nomeTipo = op1;
-                        if (tId === "8") nomeTipo = op2;
-
-                        if (!nomeTipo) {
-                            nomeTipo = ev.eventParams && ev.eventParams.params ? ev.eventParams.params.join(" ") : `Opção ${tId}`;
-                        }
-
-                        const parametro = ev.parameter !== undefined ? `(${ev.parameter})` : '';
-                        const descricaoCompleta = `${nomeTipo} ${parametro}`.trim();
-                        const oddCf = ev.cfView || "-";
-                        
-                        const btnIdMarket = `market_${jogoId}_${gIndex}_${sIndex}_${eIndex}`;
-                        const isSel = selecoesApostas.some(s => s.elementoId === btnIdMarket) ? 'selected' : '';
-
-                        const isDesativadoMarket = oddCf === "-";
-                        const estiloMarket = isDesativadoMarket ? 'opacity: 0.4; cursor: not-allowed; background: var(--bg-color);' : 'background: var(--bg-color); cursor: pointer;';
-                        
-                        const onclickMarket = isDesativadoMarket ? '' : `onclick="alternarOdd('${nomeConfronto}', '${tituloGrupo}: ${descricaoCompleta}', '${oddCf}', '${jogoId}', '${btnIdMarket}', this, ${gIndex}, ${sIndex}, ${eIndex})"`;
-
-                        html += `
-                            <div id="${btnIdMarket}" class="market-option-btn ${isSel}" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0.6rem 0.4rem; border-radius: 6px; border: 1px solid var(--border-color); text-align: center; gap: 0.2rem; transition: all 0.2s; ${estiloMarket}" ${onclickMarket}>
-                                <span style="font-size: 0.78rem; color: var(--text-main); line-height: 1.2; text-align: center;">${descricaoCompleta}</span>
-                                <span class="odd-val" style="font-weight: bold; color: var(--brand-teal); font-size: 0.9rem;">${oddCf}</span>
-                            </div>
-                        `;
-                    });
-                });
-            }
-            html += `</div></div>`;
-        });
-    } else {
-        html += `<p style="color: var(--text-muted); padding: 1rem 0; text-align: center;">Nenhum mercado adicional detalhado no momento para este jogo.</p>`;
-    }
-
-    html += `</div>`;
     container.innerHTML = html;
     container.scrollTop = 0;
+
+    // Dispara a rotina de injeção e busca dos mercados extras
+    executarCarregamentoOutrosMercados(jogoId);
 }
+
+function executarCarregamentoOutrosMercados(jogoId) {
+    const scriptId = 'script_outros_mercados_modulo';
+    const scriptExistente = document.getElementById(scriptId);
+    if (scriptExistente) scriptExistente.remove();
+
+    const script = document.createElement('script');
+    script.id = scriptId;
+    script.src = 'outros_mercados.js';
+
+    script.onload = function() {
+        // Assim que carregar o arquivo com sucesso, chama a função do objeto MercadoManager
+        if (typeof MercadoManager !== 'undefined' && typeof MercadoManager.carregarMaisMercadosAPI === 'function') {
+            MercadoManager.carregarMaisMercadosAPI(jogoId, 'containerOutrosMercados');
+        } else {
+            console.error("O objeto MercadoManager ou o método carregarMaisMercadosAPI não foram encontrados no arquivo outros_mercados.js");
+        }
+    };
+
+    script.onerror = function() {
+        // Mantém girando se o arquivo não existir fisicamente na pasta
+        console.warn("O arquivo outros_mercados.js não foi encontrado. O carregamento continuará em looping.");
+    };
+
+    document.head.appendChild(script);
+}
+
+
 
 // ==========================================
 // BOLETIM DE APOSTAS & TRANSAÇÕES COM FEEDBACK VISUAL
@@ -564,20 +570,22 @@ function atualizarValorItem(index, val) {
 }
 
 // ==========================================
-// VALIDAÇÃO EM TEMPO REAL E FEEDBACK NO BOLETIM
+// VALIDAÇÃO CIRÚRGICA DA ODD NA API E REGISTRO
 // ==========================================
-// ==========================================
-// CORREÇÃO DA APOSTA INDIVIDUAL E SALDO (COlar no script.js)
-// ==========================================
-
 async function apostarIndividual(index) {
     const item = selecoesApostas[index];
-    
-    // Usa a variável global saldo ou o saldo da janela se definido pelo perfil.js
     let saldoAtual = typeof window.saldo !== 'undefined' ? window.saldo : saldo;
 
-    if (item.valor > saldoAtual) {
-        alert("Saldo insuficiente para realizar esta aposta!");
+    const valorAposta = parseFloat(item.valor) || 0;
+    if (valorAposta <= 0) {
+        item.mensagemErro = "Digite um valor válido para apostar.";
+        renderizarBetslip();
+        return;
+    }
+
+    if (valorAposta > saldoAtual) {
+        item.mensagemErro = "Saldo insuficiente para realizar esta aposta!";
+        renderizarBetslip();
         return;
     }
 
@@ -585,56 +593,135 @@ async function apostarIndividual(index) {
     item.mensagemSucesso = null;
     item.indisponivel = false;
 
-    // Se houver revalidação online da odd, mantém o fluxo...
-    // (O restante da validação da API continua igual, o foco principal é o saldo e o histórico abaixo)
+    if (esporteAtualSelecionado) {
+        try {
+            const tipoEndpoint = modoExibicaoAtual === 'line' ? 'line' : 'live';
+            const workerUrl = `https://api.freebetano12.workers.dev/?type=${tipoEndpoint}&gameId=${item.id}`;
+            const response = await fetch(workerUrl);
+            
+            if (response.ok) {
+                const jsonBruto = await response.json();
+                let jogoAtualizado = null;
 
-    // 1. Deduz do saldo atual
-    saldoAtual -= item.valor;
+                if (Array.isArray(jsonBruto)) {
+                    jogoAtualizado = jsonBruto.find(j => String(j.id) === String(item.id)) || jsonBruto[0];
+                } else if (jsonBruto && String(jsonBruto.id) === String(item.id)) {
+                    jogoAtualizado = jsonBruto;
+                } else if (jsonBruto && jsonBruto.value) {
+                    const val = jsonBruto.value;
+                    jogoAtualizado = Array.isArray(val) ? (val.find(j => String(j.id) === String(item.id)) || val[0]) : val;
+                }
+
+                // Coleta unificada e abrangente de todos os grupos possíveis (principais, centrais e sub-jogos)
+                const coletarTodosGruposValidacao = (j) => {
+                    let todos = [];
+                    if (j.eventGroups && Array.isArray(j.eventGroups)) todos = todos.concat(j.eventGroups);
+                    if (j.centralBlockEventGroups && Array.isArray(j.centralBlockEventGroups)) todos = todos.concat(j.centralBlockEventGroups);
+                    if (j.subGamesForMainGame && Array.isArray(j.subGamesForMainGame)) {
+                        j.subGamesForMainGame.forEach(sg => {
+                            if (sg.eventGroups && Array.isArray(sg.eventGroups)) todos = todos.concat(sg.eventGroups);
+                        });
+                    }
+                    return todos;
+                };
+
+                if (jogoAtualizado) {
+                    let oddAtualizada = null;
+                    const gruposApi = coletarTodosGruposValidacao(jogoAtualizado);
+
+                    // 1. Tenta validar de forma cirúrgica pelo gIndex, sIndex e eIndex exatos
+                    if (item.gIndex !== null && item.sIndex !== null && item.eIndex !== null) {
+                        try {
+                            const grupoAPI = gruposApi[item.gIndex];
+                            if (grupoAPI && grupoAPI.events && grupoAPI.events[item.sIndex] && grupoAPI.events[item.sIndex][item.eIndex]) {
+                                const valorBrutoOdd = grupoAPI.events[item.sIndex][item.eIndex].cfView;
+                                if (valorBrutoOdd && valorBrutoOdd !== "-") {
+                                    oddAtualizada = parseFloat(valorBrutoOdd);
+                                }
+                            }
+                        } catch (e) {}
+                    }
+
+                    // 2. Fallback de segurança para o mercado principal (1X2 / Moneyline) caso o índice direto falhe
+                    if (oddAtualizada === null || isNaN(oddAtualizada)) {
+                        const grupoOficial = gruposApi.find(g => g.groupId === 1 || g.groupId === 101 || g.groupId === 7 || g.groupId === 3);
+                        if (grupoOficial && grupoOficial.events && grupoOficial.events.length > 0) {
+                            try {
+                                if (item.selecao.includes("1") || item.selecao.startsWith("1")) {
+                                    oddAtualizada = parseFloat(grupoOficial.events[0]?.[0]?.cfView);
+                                } else if (item.selecao.includes("X") || item.selecao.startsWith("X")) {
+                                    oddAtualizada = parseFloat(grupoOficial.events[1]?.[0]?.cfView);
+                                } else if (item.selecao.includes("2") || item.selecao.startsWith("2")) {
+                                    const idx2 = grupoOficial.events.length >= 3 ? 2 : 1;
+                                    oddAtualizada = parseFloat(grupoOficial.events[idx2]?.[0]?.cfView);
+                                }
+                            } catch (e) {}
+                        }
+                    }
+
+                    if (oddAtualizada === null || isNaN(oddAtualizada)) {
+                        item.indisponivel = true;
+                        item.mensagemErro = "Mercado indisponível ou suspenso na API.";
+                        renderizarBetslip();
+                        return;
+                    }
+
+                    if (oddAtualizada !== item.odd) {
+                        item.odd = oddAtualizada;
+                        item.mensagemErro = `Odd alterada para ${oddAtualizada.toFixed(2)}. Verifique e confirme.`;
+                        renderizarBetslip();
+                        return;
+                    }
+                } else {
+                    item.indisponivel = true;
+                    item.mensagemErro = "Este evento foi encerrado ou não está mais disponível.";
+                    renderizarBetslip();
+                    return;
+                }
+            }
+        } catch (erro) {
+            console.warn("Não foi possível revalidar a odd em tempo real na API, prosseguindo.", erro);
+        }
+    }
+
+    saldoAtual -= valorAposta;
     if (typeof window.saldo !== 'undefined') {
         window.saldo = saldoAtual;
     } else {
         saldo = saldoAtual;
     }
     
-    // Atualiza a interface do saldo e salva no localStorage do usuário ativo (via perfil.js / history_bet.js)
     if (typeof atualizarSaldoUI === 'function') {
         atualizarSaldoUI();
     }
 
-    // 2. Registra diretamente no histórico/pendentes usando a função do history_bet.js
+    let urlStatsGerada = "";
+    if (typeof cacheJogosAtuais !== 'undefined' && cacheJogosAtuais.length > 0) {
+        const jogoEncontrado = cacheJogosAtuais.find(j => String(j.id) === String(item.id));
+        if (jogoEncontrado && typeof gerarUrlEstatisticas === 'function') {
+            urlStatsGerada = gerarUrlEstatisticas(jogoEncontrado) || "";
+        }
+    }
+
+    const dadosApostaParaHistorico = {
+        id: item.id || '1',
+        partida: item.partida,
+        selecao: item.selecao,
+        odd: item.odd,
+        valor: valorAposta,
+        urlStats: urlStatsGerada,
+        gIndex: item.gIndex,
+        sIndex: item.sIndex,
+        eIndex: item.eIndex
+    };
+
     if (typeof registrarNovaApostaNoHistorico === 'function') {
-        registrarNovaApostaNoHistorico(item);
-    } else {
-        // Fallback direto caso o history_bet.js não tenha capturado
-        const userPrefix = typeof getStorageKey === 'function' ? getStorageKey('historico_apostas') : 'historico_apostas_convidado';
-        let historicoLocal = [];
-        try {
-            historicoLocal = JSON.parse(localStorage.getItem(userPrefix)) || [];
-        } catch(e) { historicoLocal = []; }
-
-        const novaAposta = {
-            idUnico: 'aposta_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
-            idJogo: item.id || '1',
-            partida: item.partida || 'Partida',
-            selecao: item.selecao || 'Palpite',
-            odd: parseFloat(item.odd || 1).toFixed(2),
-            valor: parseFloat(item.valor || 0),
-            retorno: (parseFloat(item.valor || 0) * parseFloat(item.odd || 1)).toFixed(2),
-            data: new Date().toLocaleString('pt-BR'),
-            status: 'Pendente',
-            gIndex: item.gIndex !== undefined ? item.gIndex : null,
-            sIndex: item.sIndex !== undefined ? item.sIndex : null,
-            eIndex: item.eIndex !== undefined ? item.eIndex : null
-        };
-
-        historicoLocal.unshift(novaAposta);
-        localStorage.setItem(userPrefix, JSON.stringify(historicoLocal));
+        registrarNovaApostaNoHistorico(dadosApostaParaHistorico);
     }
 
     item.mensagemSucesso = "Aposta realizada com sucesso!";
     renderizarBetslip();
 
-    // Dispara a animação do ícone se existir
     if (typeof animarIconePerfil === 'function') {
         animarIconePerfil();
     }
@@ -644,7 +731,6 @@ async function apostarIndividual(index) {
     }, 1800);
 }
 
-// Garante que o saldo atualize a UI e salve na chave correta do usuário logado
 function atualizarSaldoUI() {
     const elSaldo = document.getElementById('userBalance');
     const valorAtual = typeof window.saldo !== 'undefined' ? window.saldo : saldo;
@@ -659,24 +745,10 @@ function atualizarSaldoUI() {
         `;
     }
     
-    // Salva na chave dinâmica correta do usuário atual (gerenciada pelo perfil.js)
     if (typeof getStorageKey === 'function') {
         localStorage.setItem(getStorageKey('user_balance'), valorAtual);
     } else {
         localStorage.setItem('user_balance', valorAtual);
-    }
-}
-
-function atualizarSaldoUI() {
-    const elSaldo = document.getElementById('userBalance');
-    if (elSaldo) {
-        const valorFormatado = saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-        elSaldo.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; white-space: nowrap; gap: 10px;">
-                <span style="font-size: 0.85rem; color: #ffffff; font-weight: 500; text-transform: uppercase;">Saldo:</span>
-                <span style="font-size: 0.95rem; font-weight: bold; color: var(--accent-color);">R$ ${valorFormatado}</span>
-            </div>
-        `;
     }
 }
 
@@ -685,6 +757,7 @@ function atualizarSaldoUI() {
 // ==========================================
 function abrirHistorico() {
     const lista = document.getElementById('historyList');
+    if (!lista) return;
     if (historicoApostas.length === 0) {
         lista.innerHTML = '<div class="empty-msg">Nenhuma aposta realizada ainda.</div>';
     } else {
@@ -704,11 +777,13 @@ function abrirHistorico() {
         });
         lista.innerHTML = html;
     }
-    document.getElementById('historyModal').style.display = 'flex';
+    const modal = document.getElementById('historyModal');
+    if (modal) modal.style.display = 'flex';
 }
 
 function fecharHistorico() {
-    document.getElementById('historyModal').style.display = 'none';
+    const modal = document.getElementById('historyModal');
+    if (modal) modal.style.display = 'none';
 }
 
 function deslogar() {
@@ -722,12 +797,16 @@ let touchStartX = 0;
 let touchEndX = 0;
 
 window.addEventListener('touchstart', (e) => {
-    touchStartX = e.changedTouches[0].screenX;
+    if (e.changedTouches && e.changedTouches[0]) {
+        touchStartX = e.changedTouches[0].screenX;
+    }
 }, { passive: true });
 
 window.addEventListener('touchend', (e) => {
-    touchEndX = e.changedTouches ? e.changedTouches[0].screenX : e.changedTouches[0].screenX;
-    tratarSwipeMobile();
+    if (e.changedTouches && e.changedTouches[0]) {
+        touchEndX = e.changedTouches[0].screenX;
+        tratarSwipeMobile();
+    }
 }, { passive: true });
 
 function tratarSwipeMobile() {
